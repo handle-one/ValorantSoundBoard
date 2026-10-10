@@ -1,0 +1,89 @@
+<html style="margin:0;padding:0;">
+<title>ValoSoundBoard 架构与数据流</title>
+<div style="width:100%;box-sizing:border-box;font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:#f6f8fb;padding:18px 14px;">
+  <div style="max-width:880px;margin:0 auto;">
+    <div style="text-align:center;margin-bottom:14px;">
+      <div style="font-size:20px;font-weight:700;color:#1f2937;">ValoSoundBoard 架构与数据流</div>
+      <div style="font-size:13px;color:#6b7280;margin-top:4px;">示意：从“按热键”到“队友听到”的完整链路</div>
+    </div>
+
+    <!-- ============ 第一层：程序内部 ============ -->
+    <div style="background:#e8f0fe;border:2px solid #3b82f6;border-radius:10px;padding:12px 12px 4px 12px;">
+      <div style="font-size:15px;font-weight:700;color:#1d4ed8;margin-bottom:8px;">① 你的 C++ 程序（ValoSoundBoard.exe）</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;">
+        <div style="flex:1;min-width:150px;background:#ffffff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;box-sizing:border-box;">
+          <div style="font-size:14px;font-weight:700;color:#111827;">按 F6（游戏全屏也行）</div>
+          <div style="font-size:13px;color:#4b5563;margin-top:4px;">RegisterHotKey 已把 F6 注册为<strong>全局热键</strong>，系统随时能认出它</div>
+        </div>
+        <div style="font-size:20px;color:#3b82f6;align-self:center;">▶</div>
+        <div style="flex:1;min-width:150px;background:#ffffff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;box-sizing:border-box;">
+          <div style="font-size:14px;font-weight:700;color:#111827;">收到 WM_HOTKEY 消息</div>
+          <div style="font-size:13px;color:#4b5563;margin-top:4px;">主循环 GetMessage 取出消息，按消息编号查表</div>
+        </div>
+        <div style="font-size:20px;color:#3b82f6;align-self:center;">▶</div>
+        <div style="flex:1;min-width:150px;background:#ffffff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;box-sizing:border-box;">
+          <div style="font-size:14px;font-weight:700;color:#111827;">查表：F6 → example.wav</div>
+          <div style="font-size:13px;color:#4b5563;margin-top:4px;">g_bindings 是“热键 id → 音频文件”的数组，O(1) 查表</div>
+        </div>
+        <div style="font-size:20px;color:#3b82f6;align-self:center;">▶</div>
+        <div style="flex:1;min-width:150px;background:#ffffff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;box-sizing:border-box;">
+          <div style="font-size:14px;font-weight:700;color:#111827;">MF 拓扑：解码 → 渲染</div>
+          <div style="font-size:13px;color:#4b5563;margin-top:4px;">媒体源节点(解码文件) → 音频渲染器节点(指定输出设备 ID)</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;font-size:22px;color:#9ca3af;margin:2px 0;">▼</div>
+
+    <!-- ============ 第二层：系统音频（虚拟声卡） ============ -->
+    <div style="background:#e9f9ef;border:2px solid #16a34a;border-radius:10px;padding:12px 12px 4px 12px;">
+      <div style="font-size:15px;font-weight:700;color:#15803d;margin-bottom:8px;">② 系统音频层（VB-CABLE 虚拟声卡）</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;">
+        <div style="flex:1;min-width:150px;background:#ffffff;border:1px solid #bbf7d0;border-radius:8px;padding:10px;box-sizing:border-box;">
+          <div style="font-size:14px;font-weight:700;color:#111827;">CABLE Output（输出端）</div>
+          <div style="font-size:13px;color:#4b5563;margin-top:4px;">程序的声音只送来这里，<strong>不会从音箱出声</strong>打扰自己</div>
+        </div>
+        <div style="font-size:20px;color:#16a34a;align-self:center;">▶</div>
+        <div style="flex:1;min-width:150px;background:#ffffff;border:1px solid #bbf7d0;border-radius:8px;padding:10px;box-sizing:border-box;">
+          <div style="font-size:14px;font-weight:700;color:#111827;">内部跳线</div>
+          <div style="font-size:13px;color:#4b5563;margin-top:4px;">虚拟声卡把 Output 的音频信号直接接到 Input 端</div>
+        </div>
+        <div style="font-size:20px;color:#16a34a;align-self:center;">▶</div>
+        <div style="flex:1;min-width:150px;background:#ffffff;border:1px solid #bbf7d0;border-radius:8px;padding:10px;box-sizing:border-box;">
+          <div style="font-size:14px;font-weight:700;color:#111827;">CABLE Input（输入端）</div>
+          <div style="font-size:13px;color:#4b5563;margin-top:4px;">系统把它当成一个<strong>麦克风</strong>，任何程序都能选它当录音/语音输入</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;font-size:22px;color:#9ca3af;margin:2px 0;">▼</div>
+
+    <!-- ============ 第三层：游戏 ============ -->
+    <div style="background:#fff7ed;border:2px solid #f97316;border-radius:10px;padding:12px 12px 4px 12px;">
+      <div style="font-size:15px;font-weight:700;color:#c2410c;margin-bottom:8px;">③ 无畏契约</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;">
+        <div style="flex:1;min-width:150px;background:#ffffff;border:1px solid #fed7aa;border-radius:8px;padding:10px;box-sizing:border-box;">
+          <div style="font-size:14px;font-weight:700;color:#111827;">语音输入设备 = CABLE Input</div>
+          <div style="font-size:13px;color:#4b5563;margin-top:4px;">在 设置→音频→语音 里把麦克风改成虚拟声卡的输入端</div>
+        </div>
+        <div style="font-size:20px;color:#f97316;align-self:center;">▶</div>
+        <div style="flex:1;min-width:150px;background:#ffffff;border:1px solid #fed7aa;border-radius:8px;padding:10px;box-sizing:border-box;">
+          <div style="font-size:14px;font-weight:700;color:#111827;">队内语音播放</div>
+          <div style="font-size:13px;color:#4b5563;margin-top:4px;">你按 F6 播放的音效，此刻就从“麦克风”进了语音，队友听到</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 底部说明 ============ -->
+    <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-top:14px;">
+      <div style="font-size:15px;font-weight:700;color:#1f2937;margin-bottom:6px;">补充说明</div>
+      <div style="font-size:14px;color:#374151;line-height:1.7;">
+        · 核心思想：<strong>游戏只认“麦克风输入设备”，而 CABLE Input 就是程序输出的另一端</strong>，声音绕开了真实扬声器直接进语音。<br>
+        · 可选：配置 <span style="font-family:Consolas,monospace;background:#f3f4f6;padding:1px 6px;border-radius:4px;">ptt_key = V</span> 后，播放期间程序自动按住“说话键”（默认关闭）。<br>
+        · 保留热键：F5 重新加载配置，Ctrl+Q 退出。<br>
+        · 没装 VB-CABLE 时，把配置里 <span style="font-family:Consolas,monospace;background:#f3f4f6;padding:1px 6px;border-radius:4px;">device</span> 留空，声音先走默认音箱，用于测试。
+      </div>
+    </div>
+  </div>
+</div>
+</html>
